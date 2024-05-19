@@ -1,0 +1,29 @@
+{
+  "name": "leet-bot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/dotenv": "^8.2.0",
+    "@types/node-cron": "^3.0.11",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.4.5"
+  },
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only ./src/bot.ts",
+    "build": "tsc --build",
+    "start": "node ./dist/bot.js",
+        "docker-build": "docker build -f docker/Dockerfile -t leet-bot .",
+        "docker-compose:up": "docker compose -f docker/compose.yml up -d",
+        "docker-compose:down": "docker compose -f docker/compose.yml down"
+
+  },
+  "dependencies": {
+    "chalk": "4.1.2",
+    "discord.js": "^14.15.2",
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3",
+    "winston": "^3.13.0"
+  }
+}

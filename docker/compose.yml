@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  leetbot:
+    container_name: leetbot
+    image: leet-bot
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+
+volumes
+  data:
