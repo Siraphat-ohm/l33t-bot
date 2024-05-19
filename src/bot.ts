@@ -1,6 +1,5 @@
 import createClient from "./client";
 import { TOKEN } from "./utils/constants";
-import commands from "./commands";
 import Logger from "./utils/logger";
 import cron from 'node-cron';
 import createEmbed from "./utils/createEmbed";
@@ -21,7 +20,7 @@ client.on('interactionCreate', async (interaction) => {
     try {
         if ( !interaction.isChatInputCommand() ) return;
         if ( commandName === "ping" ) {
-            await interaction.reply( "Fork U!!" )
+            await interaction.reply( "Pong!" )
         }
     } catch (error) {
         console.error(error);
@@ -49,7 +48,7 @@ client.on( 'guildCreate', async (guild) => {
         }
     });
 
-    Logger.info(`Channel added to channelIds.json`);
+    Logger.success(`Channel added to channelIds.json`);
 });
 
 cron.schedule('0 0 * * *', async () => {

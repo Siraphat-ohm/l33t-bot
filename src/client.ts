@@ -1,6 +1,6 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import { REST, Routes } from 'discord.js';
-import { CLIENT_ID, TOKEN, GUILD_ID } from './utils/constants';
+import { CLIENT_ID, TOKEN } from './utils/constants';
 import commands from './commands';
 import Logger from './utils/logger';
 
