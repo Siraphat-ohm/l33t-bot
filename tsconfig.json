@@ -8,6 +8,7 @@
     "strict": false,  
     "skipLibCheck": true,
     "rootDir": "./src",
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "types": [ "./src/type.d.ts" ]
   }
 }

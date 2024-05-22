@@ -1,76 +1,146 @@
-import createClient from "./client";
-import { TOKEN } from "./utils/constants";
-import Logger from "./utils/logger";
-import cron from 'node-cron';
+import { 
+    GatewayIntentBits,
+    Events,
+    REST,
+    Routes,
+    ChatInputCommandInteraction,
+    Channel,
+    TextChannel,
+    Guild
+} from "discord.js";
+
+import ExtendedClient from "./class/ExentClient";
+import corn from "node-cron";
+import PingCommand from "./commands/ping";
+import RandCommand from "./commands/rand";
+import Command from "./class/Command";
+import randomQuestions from "./utils/randomQuetion";
 import createEmbed from "./utils/createEmbed";
-import randomQuestion from "./utils/randomQuetion";
-import channels from "./data/channelIds.json"
-import fs from 'fs';
-import path from 'path';
+import channels from "./data/channelIds.json";
+import fs from "fs";
+import path from "path";
 
-const client = createClient();
+export default class LeetBot {
+    private client = new ExtendedClient({
+            intents: [
+                GatewayIntentBits.Guilds,
+                GatewayIntentBits.GuildMessages,
+                GatewayIntentBits.MessageContent
+            ]
+    })
 
-client.on('ready', async() => Logger.info(`Bot is realdy :D`) );
+    constructor(
+        private token: string,
+        private clientId: string
+    ){}
 
-client.on('interactionCreate', async (interaction) => {
-    if (!interaction.isCommand()) return;
-
-    const { commandName } = interaction;
-
-    try {
-        if ( !interaction.isChatInputCommand() ) return;
-        if ( commandName === "ping" ) {
-            await interaction.reply( "Pong!" )
+    async start() : Promise<void> {
+        try {
+            this.eventHandlers();
+            this.registerCommands( [
+                PingCommand,
+                RandCommand
+            ])
+            await this.client.login( this.token );
+            this.cronJob();
+        } catch( e ) {
+            console.error( e );
         }
-    } catch (error) {
-        console.error(error);
-        await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
-    }
-});
-
-
-client.on( 'guildCreate', async (guild) => {
-    Logger.info(`Bot added to guild: ${guild.name}`);
-
-    const channel = guild.channels.cache.find( channel => channel.name === "leetcode");
-    if ( channel ) {
-        channels['ids'].push( channel.id.toString() as never );
-    } else {
-        const newChannel = await guild.channels.create( {
-            name: "leetcode",
-        } )
-        channels['ids'].push( newChannel.id as never );
     }
 
-    fs.writeFile( path.join( __dirname, 'data', 'channelIds.json' ), JSON.stringify( channels ), (err) => {
-        if ( err ) {
-            Logger.error( JSON.stringify( err ) );
-        }
-    });
+    async eventHandlers() {
+        this.client.on( Events.ClientReady , () => {
+            console.log( "LeetBot logged in!!" );
+        } );
 
-    Logger.success(`Channel added to channelIds.json`);
-});
+        this.client.on( Events.GuildCreate, async ( guild: Guild ) => {
+            try {
+                console.info( `Bot added to guild ${guild.name}` );
 
-cron.schedule('0 0 * * *', async () => {
-    try {
-        const questions = randomQuestion( "Easy" );
-        const embeds = questions.map( q => createEmbed( q ) );
-
-        for (const channelId of channels['ids']) {
-            
-            const channel = await client.channels.fetch(channelId)
-            const messages = await ( channel as any).messages.fetch();
-            if ( messages.size > 0 ) {
-                for (const message of messages.values()) {
-                    await message.delete();
+                const channel = guild.channels.cache.find( ch => ch.name === "leetcode" );
+                if ( channel ) channels["ids"].push( channel.id.toString() );
+                else {
+                    const newChannel = await guild.channels.create( { name : "leetcode" } );
+                    channels['ids'].push( newChannel.id );
                 }
+
+                fs.writeFile( path.join( __dirname, 'data', 'channelIds.json' ),  JSON.stringify( channels ), (e) => {
+                    if ( e ) console.error( e );
+                } )
+            } catch( e ) {
+
             }
-            await (  channel as any).send( { embeds: embeds } ); // Don't trust LSP. trust me
-        }
-    } catch (error) {
-        Logger.error( JSON.stringify( error ));
+        } )
+
+        this.client.on( Events.InteractionCreate, async( it: ChatInputCommandInteraction ) => {
+            try {
+                const { commandName } = it;
+                if ( commandName === "ping" ) {
+                    await PingCommand.execute( it );
+                } else if ( commandName == "rand" ) {
+                    if ( it.isAutocomplete() ) RandCommand.autocomplete( it )
+                    else RandCommand.execute( it )
+                }
+
+            } catch (e) {
+                console.error( e );
+            }
+        } )
     }
-});
+
+    async cronJob() {
+        corn.schedule("0 0 * * *", async () => {
+            try {
+                const questions = [
+                    randomQuestions( { difficulty: "Easy" } )[0],
+                    randomQuestions( { difficulty: "Medium" } )[0],
+                    randomQuestions( { difficulty: "Hard" } )[0],
+                ];
+                const embeds = questions.map( q => createEmbed( q ) );
+                for (const channelId of channels['ids']) {
+                    const channel: Channel = await this.client.channels.fetch(channelId);
+
+                    if (channel.isTextBased()) {
+                        const textChannel = channel as TextChannel;
+                        const messages = await textChannel.messages.fetch();
+                        
+                        if (messages.size > 0) {
+                            for (const message of messages.values()) {
+                                await message.delete();
+                            }
+                        }
+                        await textChannel.send({ embeds });
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        });
+    }
 
 
-client.login(TOKEN);
+    async registerCommands( commands : Command[] ) {
+        const rest = new REST().setToken( this.token );
+
+        for ( const command of commands ) {
+            this.client.commands.set( command.data.name, command )
+        }
+
+        ( async () => {
+            try {
+
+            console.log( `Started refreshing ${ commands.length } application (/) commands.` );
+
+            const data: any = await rest.put(
+                Routes.applicationCommands( this.clientId ),
+                { body: commands.map( cm => cm.data.toJSON() ) }
+            )
+            console.log( `Sucessfully reloaded ${data.length}` )
+
+            } catch ( e ) {
+                console.error( e );
+            }
+        })();
+
+    }
+}

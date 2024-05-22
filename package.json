@@ -11,7 +11,7 @@
     "typescript": "^5.4.5"
   },
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only ./src/bot.ts",
+    "dev": "ts-node-dev --respawn --transpile-only ./src/main.ts",
     "build": "tsc --build",
     "start": "node ./dist/bot.js",
         "docker-build": "docker build -f docker/Dockerfile -t leet-bot .",
