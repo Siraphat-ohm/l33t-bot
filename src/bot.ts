@@ -6,7 +6,9 @@ import {
     ChatInputCommandInteraction,
     Channel,
     TextChannel,
-    Guild
+    Guild,
+    PermissionsBitField,
+    ActivityType
 } from "discord.js";
 
 import ExtendedClient from "./class/ExentClient";
@@ -19,6 +21,7 @@ import createEmbed from "./utils/createEmbed";
 import channels from "./data/channelIds.json";
 import fs from "fs";
 import path from "path";
+import Logger from "./utils/logger";
 
 export default class LeetBot {
     private client = new ExtendedClient({
@@ -44,31 +47,48 @@ export default class LeetBot {
             await this.client.login( this.token );
             this.cronJob();
         } catch( e ) {
-            console.error( e );
+            Logger.error( JSON.stringify( e ) );
         }
     }
 
     async eventHandlers() {
         this.client.on( Events.ClientReady , () => {
-            console.log( "LeetBot logged in!!" );
+            this.client.user?.setStatus( "dnd" );
+            this.client.user?.setActivity({
+                name: "leetcode",
+                type: ActivityType.Playing
+            });
+            Logger.success( "LeetBot logged in!!" );
         } );
 
         this.client.on( Events.GuildCreate, async ( guild: Guild ) => {
             try {
-                console.info( `Bot added to guild ${guild.name}` );
+                Logger.info( `Bot added to guild ${guild.name}` );
 
                 const channel = guild.channels.cache.find( ch => ch.name === "leetcode" );
                 if ( channel ) channels["ids"].push( channel.id.toString() );
                 else {
-                    const newChannel = await guild.channels.create( { name : "leetcode" } );
+                    const newChannel = await guild.channels.create({
+                        name : "leetcode",
+                        permissionOverwrites: [
+                            { 
+                                id: guild.roles.everyone.id,
+                                deny: [ PermissionsBitField.Flags.SendMessages ]
+                            },
+                            {
+                                id: this.client?.user?.id || '',
+                                allow: [ PermissionsBitField.Flags.SendMessages ]
+                            }
+                        ]
+                    });
                     channels['ids'].push( newChannel.id );
                 }
 
                 fs.writeFile( path.join( __dirname, 'data', 'channelIds.json' ),  JSON.stringify( channels ), (e) => {
-                    if ( e ) console.error( e );
+                    if ( e ) Logger.error( JSON.stringify( e ) );
                 } )
             } catch( e ) {
-
+                Logger.error( JSON.stringify( e ) );
             }
         } )
 
@@ -83,7 +103,7 @@ export default class LeetBot {
                 }
 
             } catch (e) {
-                console.error( e );
+                Logger.error( JSON.stringify( e ) );
             }
         } )
     }
@@ -113,7 +133,7 @@ export default class LeetBot {
                     }
                 }
             } catch (e) {
-                console.error(e);
+                Logger.error( JSON.stringify( e ) );
             }
         });
     }
@@ -129,16 +149,16 @@ export default class LeetBot {
         ( async () => {
             try {
 
-            console.log( `Started refreshing ${ commands.length } application (/) commands.` );
+            Logger.info( `Started refreshing ${ commands.length } application (/) commands.` );
 
             const data: any = await rest.put(
                 Routes.applicationCommands( this.clientId ),
                 { body: commands.map( cm => cm.data.toJSON() ) }
             )
-            console.log( `Sucessfully reloaded ${data.length}` )
+            Logger.info( `Sucessfully reloaded ${data.length}` )
 
             } catch ( e ) {
-                console.error( e );
+                Logger.error( JSON.stringify( e ) );
             }
         })();
 

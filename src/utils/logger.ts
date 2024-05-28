@@ -6,14 +6,6 @@ const warnColor = chalk.yellow.bold;
 const infoColor = chalk.white.bold;
 const successColor = chalk.green.bold;
 
-type Log = {
-    type?: string;
-    timestamp: number;
-    uid: string;
-    event: string;
-    message: string;    
-}
-
 const customLevels = {
     error: 0,
     warning: 1,
@@ -41,7 +33,7 @@ const coloredOutputFormat = format.printf( ( log ) => {
     // bold timestampFormat
     const timeLog = chalk.bold(  log['timestamp'] );
 
-    return `${timeLog}\t${color(log.message)}`
+    return `[${timeLog}] ${color(log.message)}`
 });
 
 const consoleFormat = format.combine( timestampFormat, coloredOutputFormat );
